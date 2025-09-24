@@ -1,10 +1,14 @@
+// services/openaiService.js
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_KEY,
-});
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function explicarJuego(datosJuego) {
+  const client = getClient(); // se crea cuando llamamos a la función
   if (!datosJuego) return "No encontré información sobre este juego.";
 
   const prompt = `

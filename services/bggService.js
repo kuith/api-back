@@ -1,8 +1,10 @@
+// services/bggService.js
 import axios from "axios";
 import { parseStringPromise } from "xml2js";
 
 export async function buscarJuegoBGG(nombre) {
   try {
+    // Buscar ID por nombre
     const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(
       nombre
     )}&type=boardgame`;
@@ -13,7 +15,8 @@ export async function buscarJuegoBGG(nombre) {
 
     const id = searchData.items.item[0].$.id;
 
-    const detailUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${id}`;
+    // Detalles del juego
+    const detailUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`;
     const detailRes = await axios.get(detailUrl);
     const detailData = await parseStringPromise(detailRes.data);
 
@@ -26,6 +29,24 @@ export async function buscarJuegoBGG(nombre) {
       minJug: juego.minplayers?.[0]?.$.value || null,
       maxJug: juego.maxplayers?.[0]?.$.value || null,
       tiempo: juego.playingtime?.[0]?.$.value || null,
+      edadMin: juego.minage?.[0]?.$.value || null,
+
+      // Categorías (puede haber varias)
+      categorias: juego.link
+        ?.filter((l) => l.$.type === "boardgamecategory")
+        .map((c) => c.$.value) || [],
+
+      // Mecánicas
+      mecanicas: juego.link
+        ?.filter((l) => l.$.type === "boardgamemechanic")
+        .map((m) => m.$.value) || [],
+
+      // Puntuación media y ranking
+      puntuacion: juego.statistics?.[0]?.ratings?.[0]?.average?.[0]?.$.value || null,
+      ranking: juego.statistics?.[0]?.ratings?.[0]?.ranks?.[0]?.rank?.[0]?.$.value || null,
+
+      // Descripción (en inglés, texto largo)
+      descripcionBGG: juego.description?.[0] || null,
     };
   } catch (error) {
     console.error("❌ Error en buscarJuegoBGG:", error.message);

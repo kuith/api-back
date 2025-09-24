@@ -4,6 +4,7 @@ import { buscarJuegoBGG } from "./services/bggService.js";
 import { explicarJuego } from "./services/openaiService.js";
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
