@@ -1,31 +1,26 @@
+// index.js
 import express from "express";
 import dotenv from "dotenv";
-import { buscarJuegoBGG } from "./services/bggService.js";
-import { explicarJuego } from "./services/openaiService.js";
+import juegosRouter from "./routes/juegos.js";
 
 dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.json({ mensaje: "✅ Backend de Juegos con BGG + OpenAI listo" });
+app.use(express.json());
+
+// Rutas principales
+app.use("/api/juegos", juegosRouter);
+
+// Middleware para manejar rutas inexistentes
+app.use((req, res) => {
+  res.status(404).json({ error: "Ruta no encontrada" });
 });
 
-app.get("/api/juego/:nombre", async (req, res) => {
-  const nombre = req.params.nombre;
-  const juego = await buscarJuegoBGG(nombre);
-
-  if (!juego) {
-    return res.status(404).json({ error: "Juego no encontrado" });
-  }
-
-  const explicacion = await explicarJuego(juego);
-
-  res.json({
-    datos: juego,
-    descripcion: explicacion,
-  });
+// Middleware global de manejo de errores
+app.use((err, req, res, next) => {
+  console.error("❌ Error no controlado:", err.stack);
+  res.status(500).json({ error: "Error interno del servidor" });
 });
 
 app.listen(PORT, () => {
