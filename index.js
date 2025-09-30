@@ -1,10 +1,13 @@
 // index.js
 import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import juegosRouter from "./routes/juegos.js";
 
 dotenv.config();
 const app = express();
+// ✅ habilitar CORS para que frontend (5173) pueda hablar con backend (3000)
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
