@@ -1,78 +1,83 @@
-// services/bggService.js
-import axios from "axios";
-import { BGG_API_URL } from "../config.js";
 import { parseStringPromise } from "xml2js";
 
+const BGG_API_URL = "https://boardgamegeek.com/xmlapi2";
+
 /**
- * Buscar juegos por nombre (puede devolver varios resultados básicos)
- * @param {string} nombre - Nombre del juego a buscar
- * @returns {Promise<Array<{id: string, nombre: string, anio: string|null}>>}
+ * Función auxiliar: hace fetch y devuelve XML como string
+ */
+async function fetchXML(url) {
+  const response = await fetch(url); // fetch nativo de Node 18+
+  if (!response.ok) {
+    throw new Error(`Error en la petición a BGG (${response.status})`);
+  }
+  return response.text();
+}
+
+/**
+ * Función auxiliar: convierte XML en JSON
+ */
+async function parseXML(xml) {
+  return parseStringPromise(xml, { explicitArray: true });
+}
+
+/**
+ * Buscar juegos por nombre (solo base y expansiones)
  */
 export async function buscarJuegosPorNombre(nombre) {
-  try {
-    const url = `${BGG_API_URL}/search?query=${encodeURIComponent(nombre)}&type=boardgame,boardgameexpansion`;
-    const res = await axios.get(url);
-    const data = await parseStringPromise(res.data);
+  const url = `${BGG_API_URL}/search?query=${encodeURIComponent(nombre)}&type=boardgame,boardgameexpansion`;
+  const xml = await fetchXML(url);
+  const json = await parseXML(xml);
 
-    if (!data.items.item) return [];
-
-    return data.items.item.map((j) => ({
-      id: j.$.id,
-      nombre: j.name[0].$.value,
-      anio: j.yearpublished?.[0]?.$.value || null,
-    }));
-  } catch (error) {
-    console.error("❌ Error en buscarJuegosPorNombre:", error.message);
-    return [];
-  }
+  const items = json.items.item || [];
+  return items.map(item => ({
+    id: item.$.id,
+    nombre: item.name?.[0]?.$.value || "Sin nombre",
+    anio: item.yearpublished?.[0]?.$.value || null,
+    tipo: item.$.type
+  }));
 }
 
 /**
  * Obtener detalles completos de un juego por ID
- * @param {string} id - ID del juego en BGG
- * @returns {Promise<object|null>}
  */
 export async function obtenerDetallesPorId(id) {
-  try {
-    const url = `${BGG_API_URL}/thing?id=${id}&stats=1`;
-    const res = await axios.get(url);
-    const data = await parseStringPromise(res.data);
+  const url = `${BGG_API_URL}/thing?id=${id}&stats=1`;
+  const xml = await fetchXML(url);
+  const json = await parseXML(xml);
 
-    if (!data.items.item) return null;
-    return limpiarJuego(data.items.item[0]);
-  } catch (error) {
-    console.error("❌ Error en obtenerDetallesPorId:", error.message);
-    return null;
-  }
+  const item = json.items.item?.[0];
+  if (!item) return null;
+
+  return {
+    id,
+    nombre: item.name?.[0]?.$.value || "Sin nombre",
+    anio: item.yearpublished?.[0]?.$.value || null,
+    jugadores: `${item.minplayers?.[0]?.$.value || "?"} - ${item.maxplayers?.[0]?.$.value || "?"}`,
+    tiempo: `${item.minplaytime?.[0]?.$.value || "?"} - ${item.maxplaytime?.[0]?.$.value || "?"} min`,
+    puntuacion: item.statistics?.[0]?.ratings?.[0]?.average?.[0]?.$.value || "?"
+  };
 }
 
 /**
- * Transformar un juego crudo de BGG en objeto limpio
- * @param {object} juego - Objeto tal como lo devuelve la API de BGG
- * @returns {object} Objeto transformado con campos limpios
+ * Buscar juegos por rango de jugadores (min/max)
+ * Se basa en la lista de juegos populares (hot list) y los filtra
  */
-function limpiarJuego(juego) {
-  return {
-    id: juego.$.id,
-    nombre: juego.name[0].$.value,
-    anio: juego.yearpublished?.[0]?.$.value || null,
-    minJug: juego.minplayers?.[0]?.$.value || null,
-    maxJug: juego.maxplayers?.[0]?.$.value || null,
-    tiempo: juego.playingtime?.[0]?.$.value || null,
-    edadMin: juego.minage?.[0]?.$.value || null,
-    categorias:
-      juego.link
-        ?.filter((l) => l.$.type === "boardgamecategory")
-        .map((c) => c.$.value) || [],
-    mecanicas:
-      juego.link
-        ?.filter((l) => l.$.type === "boardgamemechanic")
-        .map((m) => m.$.value) || [],
-    puntuacion:
-      juego.statistics?.[0]?.ratings?.[0]?.average?.[0]?.$.value || null,
-    ranking:
-      juego.statistics?.[0]?.ratings?.[0]?.ranks?.[0]?.rank?.[0]?.$.value ||
-      null,
-    descripcionBGG: juego.description?.[0] || null,
-  };
+export async function buscarPorJugadores(min, max) {
+  const url = `${BGG_API_URL}/hot?type=boardgame`;
+  const xml = await fetchXML(url);
+  const json = await parseXML(xml);
+
+  const items = json.items.item || [];
+
+  // Obtenemos detalles de los primeros 20 juegos (para no saturar a la API)
+  const detalles = await Promise.all(
+    items.slice(0, 20).map(i => obtenerDetallesPorId(i.$.id))
+  );
+
+  // Filtramos por rango de jugadores
+  return detalles.filter(j => {
+    if (!j) return false;
+    const [minJ, maxJ] = j.jugadores.split(" - ").map(Number);
+    return minJ <= min && maxJ >= max;
+  });
 }
