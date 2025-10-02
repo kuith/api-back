@@ -10,7 +10,7 @@ import { parseStringPromise } from "xml2js";
  */
 export async function buscarJuegosPorNombre(nombre) {
   try {
-    const url = `${BGG_API_URL}/search?query=${encodeURIComponent(nombre)}&type=boardgame`;
+    const url = `${BGG_API_URL}/search?query=${encodeURIComponent(nombre)}&type=boardgame,boardgameexpansion`;
     const res = await axios.get(url);
     const data = await parseStringPromise(res.data);
 
