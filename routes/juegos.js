@@ -2,7 +2,8 @@ import express from "express";
 import {
   buscarJuegosPorNombre,
   obtenerDetallesPorId,
-  buscarPorJugadores
+  buscarPorJugadores,
+  buscarPorDuracion
 } from "../services/bggService.js";
 import { explicarJuego } from "../services/openaiService.js";
 
@@ -28,19 +29,40 @@ router.get("/search", async (req, res) => {
 });
 
 /**
- * GET /api/juegos/:id
- * Obtener detalles de un juego por ID
+ * GET /api/juegos/jugadores?min=2&max=4
+ * Buscar juegos que funcionen en ese rango de jugadores
  */
-router.get("/:id", async (req, res) => {
+router.get("/jugadores", async (req, res) => {
+  const { min, max } = req.query;
+  if (!min || !max) {
+    return res.status(400).json({ error: "Debes indicar min y max" });
+  }
+
   try {
-    const juego = await obtenerDetallesPorId(req.params.id);
-    if (!juego) {
-      return res.status(404).json({ error: "Juego no encontrado" });
-    }
-    res.json(juego);
+    const juegos = await buscarPorJugadores(parseInt(min), parseInt(max));
+    res.json(juegos);
   } catch (error) {
-    console.error("Error en /:id:", error);
-    res.status(500).json({ error: "No se pudieron obtener los detalles" });
+    console.error("Error en /jugadores:", error);
+    res.status(500).json({ error: "No se pudieron obtener los juegos" });
+  }
+});
+
+/**
+ * GET /api/juegos/playtime?min=30&max=60
+ * Buscar juegos que funcionen en ese rango de tiempo de juego
+ */
+router.get("/playtime", async (req, res) => {
+  const { min, max } = req.query;
+  if (!min || !max) {
+    return res.status(400).json({ error: "Debes indicar min y max" });
+  }
+
+  try {
+    const juegos = await buscarPorDuracion(parseInt(min), parseInt(max));
+    res.json(juegos);
+  } catch (error) {
+    console.error("Error en /playtime:", error);
+    res.status(500).json({ error: "No se pudieron obtener los juegos" });
   }
 });
 
@@ -64,21 +86,19 @@ router.get("/:id/explicacion", async (req, res) => {
 });
 
 /**
- * GET /api/juegos/jugadores?min=2&max=4
- * Buscar juegos que funcionen en ese rango de jugadores
+ * GET /api/juegos/:id
+ * Obtener detalles de un juego por ID
  */
-router.get("/jugadores", async (req, res) => {
-  const { min, max } = req.query;
-  if (!min || !max) {
-    return res.status(400).json({ error: "Debes indicar min y max" });
-  }
-
+router.get("/:id", async (req, res) => {
   try {
-    const juegos = await buscarPorJugadores(parseInt(min), parseInt(max));
-    res.json(juegos);
+    const juego = await obtenerDetallesPorId(req.params.id);
+    if (!juego) {
+      return res.status(404).json({ error: "Juego no encontrado" });
+    }
+    res.json(juego);
   } catch (error) {
-    console.error("Error en /jugadores:", error);
-    res.status(500).json({ error: "No se pudieron obtener los juegos" });
+    console.error("Error en /:id:", error);
+    res.status(500).json({ error: "No se pudieron obtener los detalles" });
   }
 });
 
