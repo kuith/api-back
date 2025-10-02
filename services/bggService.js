@@ -1,5 +1,6 @@
 // services/bggService.js
 import axios from "axios";
+import { BGG_API_URL } from "../config.js";
 import { parseStringPromise } from "xml2js";
 
 /**
@@ -9,10 +10,7 @@ import { parseStringPromise } from "xml2js";
  */
 export async function buscarJuegosPorNombre(nombre) {
   try {
-    const url = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(
-      nombre
-    )}&type=boardgame`;
-
+    const url = `${BGG_API_URL}/search?query=${encodeURIComponent(nombre)}&type=boardgame`;
     const res = await axios.get(url);
     const data = await parseStringPromise(res.data);
 
@@ -36,7 +34,7 @@ export async function buscarJuegosPorNombre(nombre) {
  */
 export async function obtenerDetallesPorId(id) {
   try {
-    const url = `https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`;
+    const url = `${BGG_API_URL}/thing?id=${id}&stats=1`;
     const res = await axios.get(url);
     const data = await parseStringPromise(res.data);
 
