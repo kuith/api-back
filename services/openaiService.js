@@ -1,9 +1,12 @@
 // services/openaiService.js
 import OpenAI from "openai";
+import { OPENAI_API_URL } from "../config.js";
+
 
 function getClient() {
   return new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    baseURL: OPENAI_API_URL,
   });
 }
 
